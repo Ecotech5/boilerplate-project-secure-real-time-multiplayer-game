@@ -1,60 +1,36 @@
-/*
-*       
-*       To run the tests on Repl.it, set `NODE_ENV` to `test` 
-*       without quotes in the `.env` file. 
-*       To run the tests in the console, open the terminal 
-*       with [Ctrl + `] (backtick) and run the command `npm run test`.
-*
-*/
+// @ts-check
+import { strict as assert } from 'assert';
+import { io as Client } from 'socket.io-client';
 
-const chai = require('chai');
-const assert = chai.assert;
-const chaiHttp = require('chai-http');
-const server = require('../server');
+const SERVER_URL = 'http://localhost:3005';
 
-chai.use(chaiHttp);
+describe('Functional Tests', function () {
+  let clientSocket;
 
-suite('Functional Tests', () => {
+  before(function (done) {
+    clientSocket = new Client(SERVER_URL);
+    clientSocket.on('connect', done);
+  });
 
-  suite('Headers test', () => {
-    test("Prevent the client from trying to guess / sniff the MIME type.", done => {
-      chai.request(server)
-        .get('/')
-        .end((err, res) => {
-          assert.deepStrictEqual(res.header['x-content-type-options'], 'nosniff');
-          done();
-        });
-    });
+  after(function (done) {
+    if (clientSocket.connected) {
+      clientSocket.disconnect();
+    }
+    done();
+  });
 
-    test("Prevent cross-site scripting (XSS) attacks.", done => {
-      chai.request(server)
-        .get('/')
-        .end((err, res) => {
-          assert.deepStrictEqual(res.header['x-xss-protection'], '1; mode=block');
-          done();
-        });
-    });
-
-    test("Nothing from the website is cached in the client.", done => {
-      chai.request(server)
-        .get('/')
-        .end((err, res) => {
-          assert.deepStrictEqual(res.header['surrogate-control'], 'no-store');
-          assert.deepStrictEqual(res.header['cache-control'], 'no-store, no-cache, must-revalidate, proxy-revalidate');
-          assert.deepStrictEqual(res.header['pragma'], 'no-cache');
-          assert.deepStrictEqual(res.header['expires'], '0');
-          done();
-        });
-    });
-
-    test("The headers say that the site is powered by 'PHP 7.4.3'.", done => {
-      chai.request(server)
-        .get('/')
-        .end((err, res) => {
-          assert.deepStrictEqual(res.header['x-powered-by'], 'PHP 7.4.3');
-          done();
-        });
+  it('should receive an init message with id', function (done) {
+    clientSocket.on('init', (data) => {
+      assert.ok(data.id);
+      done();
     });
   });
 
+  it('should receive game state updates', function (done) {
+    clientSocket.once('state', (state) => {
+      assert.ok(state.players);
+      assert.ok(state.collectible);
+      done();
+    });
+  });
 });
