@@ -1,18 +1,21 @@
 export class Collectible {
   constructor() {
-    this.radius = 10;
     this.respawn();
   }
 
   respawn() {
-    this.x = Math.floor(Math.random() * 700) + 50;
-    this.y = Math.floor(Math.random() * 400) + 50;
+    // Random x,y between 0 and 500
+    this.x = Math.floor(Math.random() * 500);
+    this.y = Math.floor(Math.random() * 500);
   }
 
   isCollected(player) {
-    const dx = this.x - player.x;
-    const dy = this.y - player.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance < this.radius + player.radius;
+    // Calculate Euclidean distance
+    const dist = Math.sqrt(
+      (player.x - this.x) ** 2 + (player.y - this.y) ** 2
+    );
+
+    // Consider collected if within 20 pixels radius
+    return dist < 20;
   }
 }
