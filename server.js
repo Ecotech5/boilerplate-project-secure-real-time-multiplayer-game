@@ -17,19 +17,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // ✅ Apply security middleware FIRST
-app.use(cors()); // Allow cross-origin (required by FCC tests)
-app.use(nocache()); // ❌ Disable client-side caching (Test 18)
-app.use(helmet({ contentSecurityPolicy: false })); // General helmet
-app.use(helmet.noSniff()); // ❌ Prevent MIME sniffing (Test 16)
-app.use(helmet.xssFilter()); // ❌ Prevent XSS (Test 17)
+app.use(cors()); // Required by FCC
+app.use(nocache()); // Prevent caching (Test 18)
+app.use(helmet({ contentSecurityPolicy: false })); // Base Helmet without CSP
+app.use(helmet.noSniff()); // Prevent MIME sniffing (Test 16)
 
-// ✅ Custom header to spoof tech stack (Test 19)
+// ✅ Manual header fallback for XSS and powered-by (Test 17 + 19)
 app.use((req, res, next) => {
-  res.setHeader('X-Powered-By', 'PHP 7.4.3');
+  res.setHeader('X-XSS-Protection', '1; mode=block'); // For XSS (Test 17)
+  res.setHeader('X-Powered-By', 'PHP 7.4.3'); // Fake header (Test 19)
   next();
 });
 
-// ✅ Serve static files with security headers
+// ✅ Serve static files with manual headers
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -41,7 +41,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ✅ Serve index.html with security headers
+// ✅ Serve index.html manually with all headers (FCC checks this)
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'public/index.html');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -53,7 +53,7 @@ app.get('/', (req, res) => {
   res.sendFile(filePath);
 });
 
-// ✅ Initialize WebSocket handling
+// ✅ Handle Socket.IO logic
 handleSocket(io);
 
 // ✅ Start the server
