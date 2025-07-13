@@ -1,16 +1,12 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import helmet from 'helmet';
-import nocache from 'nocache';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { config } from 'dotenv';
-import { setupSocket } from './game/sockets.mjs';
+import helmet from 'helmet';
+import nocache from 'nocache';
+import { handleSocket } from './game/sockets.mjs';
 
-config(); // Load environment variables
-
-// Necessary for __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -18,35 +14,35 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ✅ SECURITY MIDDLEWARES
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(helmet.noSniff());
-app.use(nocache());
+// ===== Middleware for Security Headers =====
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable to prevent blocking inline scripts during development
+}));
+app.use(nocache()); // Prevent client-side caching
+
+// 🛡️ Manually override X-Powered-By
 app.use((req, res, next) => {
-  res.setHeader('X-Powered-By', 'PHP 7.4.3'); // Obfuscate tech stack
+  res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ STATIC FILES
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static files from /public with correct MIME type handling
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff'); // ❌ Prevent MIME type sniffing (Test 16)
+  }
+}));
 
-// ✅ ROOT ROUTE
+// Serve homepage
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// ✅ SOCKET.IO HANDLER
-setupSocket(io);
+// ===== Socket.IO Game Logic =====
+handleSocket(io);
 
-// ✅ FOR FCC TESTING (optional)
-try {
-  const fcctesting = await import('./freeCodeCamp/fcctesting.mjs');
-} catch (err) {
-  // No problem if missing
-}
-
-// ✅ START SERVER
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+// ===== Start Server =====
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+  console.log(`✅ Server listening on port ${port}`);
 });
