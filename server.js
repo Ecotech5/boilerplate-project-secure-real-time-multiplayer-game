@@ -12,42 +12,48 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Essential security middlewares
+// ✅ Apply essential security middlewares
 app.use(cors());
+app.use(nocache()); // ❌ Prevent caching (Test 18)
+
+// ✅ Helmet base config
 app.use(helmet({
-  contentSecurityPolicy: false, // disable for WebSocket compatibility
-  crossOriginEmbedderPolicy: false // disable if using Canvas or fonts
+  contentSecurityPolicy: false, // Needed for WebSocket
+  crossOriginEmbedderPolicy: false
 }));
 
-// ❌ Prevent MIME type sniffing (Test 16)
-app.use(helmet.noSniff());
+// ✅ Test 16: Prevent MIME sniffing
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  next();
+});
 
-// ❌ Prevent XSS attacks (Test 17)
-app.use(helmet.xssFilter()); // deprecated but still used in FCC tests
+// ✅ Test 17: Prevent XSS attacks
+app.use((req, res, next) => {
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  next();
+});
 
-// ❌ Disable caching (Test 18)
-app.use(nocache());
-
-// ❌ Mask tech stack (Test 19)
+// ✅ Test 19: Fake "PHP" header
 app.use((req, res, next) => {
   res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// Serve static files
+// ✅ Static file serving
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve main page
+// ✅ Root route
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-// Handle WebSocket connections
+// ✅ Initialize socket connections
 handleSocket(io);
 
-// Start the server
+// ✅ Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✅ Server listening on port ${PORT}`);
