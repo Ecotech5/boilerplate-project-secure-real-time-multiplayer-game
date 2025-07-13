@@ -16,22 +16,22 @@ const io = new Server(server);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Essential security middlewares
-app.use(cors());
-app.use(nocache()); // ✅ Prevent caching (Test 18)
-app.use(helmet({ contentSecurityPolicy: false })); // base helmet
-app.use(helmet.noSniff()); // ✅ Prevent MIME sniffing (Test 16)
-app.use(helmet.xssFilter()); // ✅ Prevent XSS (Test 17, deprecated but FCC expects it)
+// ✅ Apply security middleware FIRST
+app.use(cors()); // Allow cross-origin (required by FCC tests)
+app.use(nocache()); // ❌ Disable client-side caching (Test 18)
+app.use(helmet({ contentSecurityPolicy: false })); // General helmet
+app.use(helmet.noSniff()); // ❌ Prevent MIME sniffing (Test 16)
+app.use(helmet.xssFilter()); // ❌ Prevent XSS (Test 17)
 
-// ✅ Set fake powered-by header (Test 19)
+// ✅ Custom header to spoof tech stack (Test 19)
 app.use((req, res, next) => {
   res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ Serve static files with all headers
+// ✅ Serve static files with security headers
 app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res, filePath) => {
+  setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -41,7 +41,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ✅ Serve the homepage manually with headers
+// ✅ Serve index.html with security headers
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'public/index.html');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
