@@ -12,45 +12,48 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ✅ Apply essential security middlewares
+// Set __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ✅ Essential security middlewares
 app.use(cors());
-app.use(nocache()); // ❌ Prevent caching (Test 18)
+app.use(nocache()); // ✅ Prevent caching (Test 18)
+app.use(helmet({ contentSecurityPolicy: false })); // base helmet
+app.use(helmet.noSniff()); // ✅ Prevent MIME sniffing (Test 16)
+app.use(helmet.xssFilter()); // ✅ Prevent XSS (Test 17, deprecated but FCC expects it)
 
-// ✅ Helmet base config
-app.use(helmet({
-  contentSecurityPolicy: false, // Needed for WebSocket
-  crossOriginEmbedderPolicy: false
-}));
-
-// ✅ Test 16: Prevent MIME sniffing
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  next();
-});
-
-// ✅ Test 17: Prevent XSS attacks
-app.use((req, res, next) => {
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
-
-// ✅ Test 19: Fake "PHP" header
+// ✅ Set fake powered-by header (Test 19)
 app.use((req, res, next) => {
   res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ Static file serving
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, 'public')));
+// ✅ Serve static files with all headers
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('X-Powered-By', 'PHP 7.4.3');
+  }
+}));
 
-// ✅ Root route
+// ✅ Serve the homepage manually with headers
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'));
+  const filePath = path.join(__dirname, 'public/index.html');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Powered-By', 'PHP 7.4.3');
+  res.sendFile(filePath);
 });
 
-// ✅ Initialize socket connections
+// ✅ Initialize WebSocket handling
 handleSocket(io);
 
 // ✅ Start the server
