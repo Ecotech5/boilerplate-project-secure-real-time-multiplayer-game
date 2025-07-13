@@ -1,10 +1,14 @@
 import { addPlayer, removePlayer, handleMovement, getGameState } from './game.mjs';
 
-export function setupSocket(io) {
+/**
+ * Handles all Socket.IO connection logic.
+ * @param {import('socket.io').Server} io
+ */
+export function handleSocket(io) {
   io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
-    const player = addPlayer(socket.id);
 
+    addPlayer(socket.id);
     socket.emit('init', { id: socket.id });
 
     socket.on('move', (direction) => {
@@ -17,7 +21,7 @@ export function setupSocket(io) {
     });
   });
 
-  // Emit game state to all clients every 100ms
+  // Broadcast game state to all clients every 100ms
   setInterval(() => {
     io.emit('state', getGameState());
   }, 100);
