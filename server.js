@@ -12,24 +12,23 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Set __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Apply security middleware FIRST
-app.use(cors()); // Required by FCC
-app.use(nocache()); // Prevent caching (Test 18)
-app.use(helmet({ contentSecurityPolicy: false })); // Base Helmet without CSP
-app.use(helmet.noSniff()); // Prevent MIME sniffing (Test 16)
+// ✅ Apply security middleware
+app.use(cors());
+app.use(nocache());
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet.noSniff());
 
-// ✅ Manual header fallback for XSS and powered-by (Test 17 + 19)
+// ✅ Set headers for XSS protection and fake PHP header
 app.use((req, res, next) => {
-  res.setHeader('X-XSS-Protection', '1; mode=block'); // For XSS (Test 17)
-  res.setHeader('X-Powered-By', 'PHP 7.4.3'); // Fake header (Test 19)
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ Serve static files with manual headers
+// ✅ Serve static files from public/
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -41,7 +40,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ✅ Serve index.html manually with all headers (FCC checks this)
+// ✅ Serve game/ directory for browser module imports
+app.use('/game', express.static(path.join(__dirname, 'game')));
+
+// ✅ Serve index.html manually
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'public/index.html');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -53,10 +55,8 @@ app.get('/', (req, res) => {
   res.sendFile(filePath);
 });
 
-// ✅ Handle Socket.IO logic
+// ✅ Start server and WebSocket logic
 handleSocket(io);
-
-// ✅ Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✅ Server listening on port ${PORT}`);

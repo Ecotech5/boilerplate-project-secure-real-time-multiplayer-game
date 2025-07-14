@@ -4,17 +4,16 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Secure Multiplayer Game</title>
-
-  <!-- ✅ Correct path assuming /public is static root -->
+  <title>Secure Real-Time Multiplayer Game</title>
   <link rel="stylesheet" href="/style.css" type="text/css" />
 </head>
 <body>
-  <h1>Welcome to the Multiplayer Game!</h1>
+  <h1>Welcome to the Multiplayer Game</h1>
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-  <canvas id="gameCanvas"></canvas>
-
-  <!-- ✅ Correct ES module load -->
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Main Game Logic -->
   <script type="module" src="/game.mjs"></script>
 </body>
 </html>
