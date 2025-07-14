@@ -1,4 +1,4 @@
-import { addPlayer, removePlayer, handleMovement, getGameState } from './game.mjs';
+import { addPlayer, removePlayer, handleMovement, getGameState } from '../public/game.mjs';
 
 /**
  * Handles all Socket.IO connection logic.

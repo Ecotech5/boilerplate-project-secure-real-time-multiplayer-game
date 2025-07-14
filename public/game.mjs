@@ -1,5 +1,5 @@
-import { Player } from './Player.mjs';
-import { Collectible } from './Collectible.mjs';
+import { Player } from '../game/Player.mjs';
+import { Collectible } from '../game/Collectible.mjs';
 
 const players = {};
 const collectible = new Collectible();
