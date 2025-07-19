@@ -12,30 +12,30 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ✅ Handle __dirname in ES Modules
+// 📍 Resolve __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Security Middleware
+// ✅ Basic Security Middleware
 app.use(cors());
 app.use(nocache());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(helmet.noSniff());
-app.disable('x-powered-by'); // Disable default header
+app.disable('x-powered-by'); // Disable default Express header
 
-// ✅ Spoof X-Powered-By for FCC test 19
+// ✅ FCC Test 19 — Spoof X-Powered-By
 app.use((req, res, next) => {
   res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ Add X-XSS-Protection globally
+// ✅ FCC Test 17 — X-XSS-Protection
 app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   next();
 });
 
-// ✅ Serve static assets from /public with cache and security headers
+// ✅ FCC Test 18 — X-Content-Type-Options and full caching disable
 app.use(
   express.static(path.join(__dirname, 'public'), {
     setHeaders: (res) => {
@@ -44,14 +44,15 @@ app.use(
       res.setHeader('Expires', '0');
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('X-XSS-Protection', '1; mode=block');
+      res.setHeader('X-Powered-By', 'PHP 7.4.3');
     },
   })
 );
 
-// ✅ Allow import of ES modules from /game
+// ✅ Allow ES Module imports from /game
 app.use('/game', express.static(path.join(__dirname, 'game')));
 
-// ✅ Serve index.html manually
+// ✅ Serve index.html manually with correct headers
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'public/index.html');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -59,14 +60,15 @@ app.get('/', (req, res) => {
   res.setHeader('Expires', '0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Powered-By', 'PHP 7.4.3');
   res.sendFile(filePath);
 });
 
-// ✅ Connect socket.io logic
+// ✅ Attach game socket logic
 handleSocket(io);
 
 // ✅ Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ Server listening on port ${PORT}`);
+  console.log(`✅ Server is listening on port ${PORT}`);
 });
