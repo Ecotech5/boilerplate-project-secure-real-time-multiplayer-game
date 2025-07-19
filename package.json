@@ -9,22 +9,18 @@
     "test": "mocha --experimental-vm-modules tests/1_unit-tests.js"
   },
   "dependencies": {
-    "body-parser": "^1.19.0",
-    "chai": "^4.2.0",
-    "chai-http": "^4.3.0",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.21.2",
-    "helmet": "^3.23.3",
-    "jsdom": "^16.2.0",
-    "nanoid": "^3.1.16",
+    "helmet": "^3.21.3",
     "nocache": "^2.1.0",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.7.1"
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "chai": "^4.3.4",
+    "chai-http": "^4.3.0",
     "mocha": "^11.7.1",
-    "nodemon": "^2.0.6"
+    "nodemon": "^2.0.22"
   },
   "license": "MIT"
 }

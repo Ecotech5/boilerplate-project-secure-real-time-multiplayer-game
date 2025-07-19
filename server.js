@@ -12,23 +12,22 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Handle __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Apply security middleware
+// ✅ Security middleware
 app.use(cors());
 app.use(nocache());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(helmet.noSniff());
-
-// ✅ Set headers for XSS protection and fake PHP header
 app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ Serve static files from public/
+// ✅ Serve static assets from /public
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -40,7 +39,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ✅ Serve game/ directory for browser module imports
+// ✅ Allow import of ES modules in /game from browser
 app.use('/game', express.static(path.join(__dirname, 'game')));
 
 // ✅ Serve index.html manually
@@ -55,8 +54,10 @@ app.get('/', (req, res) => {
   res.sendFile(filePath);
 });
 
-// ✅ Start server and WebSocket logic
+// ✅ Connect socket logic
 handleSocket(io);
+
+// ✅ Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✅ Server listening on port ${PORT}`);
