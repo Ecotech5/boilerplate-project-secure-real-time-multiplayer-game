@@ -1,68 +1,50 @@
 const socket = io();
-
-// Create the canvas and context
-const canvas = document.createElement('canvas');
+const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-document.body.appendChild(canvas);
 
-canvas.width = 800;
-canvas.height = 600;
-
-const playerRadius = 20;
-const collectibleRadius = 10;
-
-let gameState = { players: [], collectible: {} };
 let playerId = null;
+let gameState = null;
 
-// Draw game state
-function drawGame() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Draw collectible
-  if (gameState.collectible) {
-    ctx.beginPath();
-    ctx.arc(gameState.collectible.x, gameState.collectible.y, collectibleRadius, 0, Math.PI * 2);
-    ctx.fillStyle = 'gold';
-    ctx.fill();
-    ctx.closePath();
-  }
-
-  // Draw all players
-  gameState.players.forEach(player => {
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, playerRadius, 0, Math.PI * 2);
-    ctx.fillStyle = player.id === playerId ? 'blue' : 'gray';
-    ctx.fill();
-    ctx.closePath();
-
-    // Draw score
-    ctx.fillStyle = 'black';
-    ctx.font = '14px Arial';
-    ctx.fillText(`Score: ${player.score}`, player.x - 20, player.y - 30);
-  });
-}
-
-// Handle server updates
-socket.on('init', data => {
-  playerId = data.id;
-  gameState = data.state;
-  drawGame();
+socket.on('init', ({ id }) => {
+  playerId = id;
 });
 
-socket.on('update', state => {
+socket.on('state', (state) => {
   gameState = state;
   drawGame();
 });
 
-// Handle player input
-window.addEventListener('keydown', e => {
-  let direction = null;
+function drawGame() {
+  if (!gameState || !playerId) return;
 
-  if (e.key === 'ArrowUp') direction = 'up';
-  if (e.key === 'ArrowDown') direction = 'down';
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw collectible
+  ctx.beginPath();
+  ctx.arc(gameState.collectible.x, gameState.collectible.y, 10, 0, 2 * Math.PI);
+  ctx.fillStyle = 'yellow';
+  ctx.fill();
+
+  // Draw players
+  for (const player of gameState.players) {
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, 15, 0, 2 * Math.PI);
+    ctx.fillStyle = player.color;
+    ctx.fill();
+
+    // Draw score
+    ctx.fillStyle = 'black';
+    ctx.font = '14px Arial';
+    ctx.fillText(`Score: ${player.score}`, player.x - 20, player.y - 20);
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  let direction;
   if (e.key === 'ArrowLeft') direction = 'left';
   if (e.key === 'ArrowRight') direction = 'right';
-
+  if (e.key === 'ArrowUp') direction = 'up';
+  if (e.key === 'ArrowDown') direction = 'down';
   if (direction) {
     socket.emit('move', direction);
   }

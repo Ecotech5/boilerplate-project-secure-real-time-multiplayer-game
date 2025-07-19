@@ -9,7 +9,12 @@ export function handleSocket(io) {
     console.log(`Player connected: ${socket.id}`);
 
     addPlayer(socket.id);
-    socket.emit('init', { id: socket.id });
+
+    // Send ID and full game state including collectible
+    socket.emit('init', {
+      id: socket.id,
+      state: getGameState()
+    });
 
     socket.on('move', (direction) => {
       handleMovement(socket.id, direction);
