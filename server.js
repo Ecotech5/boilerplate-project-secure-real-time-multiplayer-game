@@ -12,34 +12,43 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Handle __dirname in ES Modules
+// ✅ Handle __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Security middleware
+// ✅ Security Middleware
 app.use(cors());
 app.use(nocache());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(helmet.noSniff());
-app.disable('x-powered-by'); // <== ✅ Removes default Express X-Powered-By header
+app.disable('x-powered-by'); // Disable default header
 
+// ✅ Spoof X-Powered-By for FCC test 19
+app.use((req, res, next) => {
+  res.setHeader('X-Powered-By', 'PHP 7.4.3');
+  next();
+});
+
+// ✅ Add X-XSS-Protection globally
 app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   next();
 });
 
-// ✅ Serve static assets from /public
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-  }
-}));
+// ✅ Serve static assets from /public with cache and security headers
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-XSS-Protection', '1; mode=block');
+    },
+  })
+);
 
-// ✅ Allow import of ES modules in /game from browser
+// ✅ Allow import of ES modules from /game
 app.use('/game', express.static(path.join(__dirname, 'game')));
 
 // ✅ Serve index.html manually
@@ -53,7 +62,7 @@ app.get('/', (req, res) => {
   res.sendFile(filePath);
 });
 
-// ✅ Connect socket logic
+// ✅ Connect socket.io logic
 handleSocket(io);
 
 // ✅ Start server
