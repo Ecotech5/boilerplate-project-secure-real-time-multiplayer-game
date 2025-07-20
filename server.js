@@ -15,8 +15,10 @@ const io = new Server(server);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Apply Helmet early before any routes or static middleware
-app.use(cors());
+// ✅ CORS fix required for FCC tests
+app.use(cors({ origin: '*' }));
+
+// ✅ Helmet must be applied BEFORE routes/static
 app.use(nocache());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(helmet.noSniff());
@@ -26,11 +28,11 @@ app.use(helmet.hidePoweredBy());
 
 // ✅ Manually spoof "X-Powered-By"
 app.use((req, res, next) => {
-  res.setHeader('X-Powered-By', 'PHP 7.4.3');
+  res.setHeader('X-Powered-By', 'PHP 7.4.3'); // Spoofed header
   next();
 });
 
-// ✅ Add other global security headers
+// ✅ Add security headers explicitly
 app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -40,7 +42,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Serve static assets from /public
+// ✅ Serve static files with no cache + security headers
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -51,10 +53,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ✅ Serve ES module scripts from /game
+// ✅ Serve ES module scripts
 app.use('/game', express.static(path.join(__dirname, 'game')));
 
-// ✅ Manually serve index.html
+// ✅ Serve main HTML manually with correct headers
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'public/index.html');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -65,10 +67,10 @@ app.get('/', (req, res) => {
   res.sendFile(filePath);
 });
 
-// ✅ Attach socket logic
+// ✅ Attach Socket.io handlers
 handleSocket(io);
 
-// ✅ Start server
+// ✅ Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
