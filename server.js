@@ -12,47 +12,49 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 📍 Resolve __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ Basic Security Middleware
+// ✅ Apply Helmet early before any routes or static middleware
 app.use(cors());
 app.use(nocache());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(helmet.noSniff());
-app.disable('x-powered-by'); // Disable default Express header
+app.use(helmet.xssFilter());
+app.use(helmet.frameguard({ action: 'sameorigin' }));
+app.use(helmet.hidePoweredBy());
 
-// ✅ FCC Test 19 — Spoof X-Powered-By
+// ✅ Manually spoof "X-Powered-By"
 app.use((req, res, next) => {
   res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ FCC Test 17 — X-XSS-Protection
+// ✅ Add other global security headers
 app.use((req, res, next) => {
   res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   next();
 });
 
-// ✅ FCC Test 18 — X-Content-Type-Options and full caching disable
-app.use(
-  express.static(path.join(__dirname, 'public'), {
-    setHeaders: (res) => {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('X-XSS-Protection', '1; mode=block');
-      res.setHeader('X-Powered-By', 'PHP 7.4.3');
-    },
-  })
-);
+// ✅ Serve static assets from /public
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+  }
+}));
 
-// ✅ Allow ES Module imports from /game
+// ✅ Serve ES module scripts from /game
 app.use('/game', express.static(path.join(__dirname, 'game')));
 
-// ✅ Serve index.html manually with correct headers
+// ✅ Manually serve index.html
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'public/index.html');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -60,15 +62,14 @@ app.get('/', (req, res) => {
   res.setHeader('Expires', '0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('X-Powered-By', 'PHP 7.4.3');
   res.sendFile(filePath);
 });
 
-// ✅ Attach game socket logic
+// ✅ Attach socket logic
 handleSocket(io);
 
 // ✅ Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`✅ Server is listening on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
