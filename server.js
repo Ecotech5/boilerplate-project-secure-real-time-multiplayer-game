@@ -15,62 +15,47 @@ const io = new Server(server);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ CORS fix required for FCC tests
+// ✅ CORS (FCC test requires it)
 app.use(cors({ origin: '*' }));
 
-// ✅ Helmet must be applied BEFORE routes/static
+// ✅ Disable caching
 app.use(nocache());
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(helmet.noSniff());
-app.use(helmet.xssFilter());
-app.use(helmet.frameguard({ action: 'sameorigin' }));
-app.use(helmet.hidePoweredBy());
 
-// ✅ Manually spoof "X-Powered-By"
+// ✅ Correct Helmet setup (DO NOT override defaults)
+app.use(helmet()); // includes default protections
+app.use(helmet.hidePoweredBy()); // FCC test requires it
+
+// ✅ Spoof "X-Powered-By" manually AFTER helmet removes it
 app.use((req, res, next) => {
-  res.setHeader('X-Powered-By', 'PHP 7.4.3'); // Spoofed header
+  res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
 });
 
-// ✅ Add security headers explicitly
-app.use((req, res, next) => {
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  next();
-});
-
-// ✅ Serve static files with no cache + security headers
+// ✅ Serve static files with no-cache headers
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
   }
 }));
 
-// ✅ Serve ES module scripts
+// ✅ Serve game scripts
 app.use('/game', express.static(path.join(__dirname, 'game')));
 
-// ✅ Serve main HTML manually with correct headers
+// ✅ Serve index.html manually with same headers
 app.get('/', (req, res) => {
   const filePath = path.join(__dirname, 'public/index.html');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
   res.sendFile(filePath);
 });
 
-// ✅ Attach Socket.io handlers
+// ✅ Attach Socket.io logic
 handleSocket(io);
 
-// ✅ Start the server
+// ✅ Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
