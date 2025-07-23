@@ -20,18 +20,20 @@ const __dirname  = path.dirname(__filename);
 /* ───────────────────────────────────────
    1)  Core security + testing middleware
    ─────────────────────────────────────── */
-// CORS ‑‑ lets FCC’s test runner access the site
+
+// CORS – lets FCC’s test runner access the site
 app.use(cors({ origin: '*' }));
 
-// Disable client‑side caching
+// Disable client-side caching
 app.use(nocache());
 
-// Helmet (single call, default protections)
+// Helmet – enables most security headers (except CSP)
 app.use(helmet({
-  contentSecurityPolicy: false   // keep CSP off for this small app
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false, // Add this for FCC security header test 18
 }));
 
-// Manually spoof X‑Powered‑By for FCC test #19
+// Spoof X‑Powered‑By header for FCC test #19
 app.use((req, res, next) => {
   res.setHeader('X-Powered-By', 'PHP 7.4.3');
   next();
@@ -42,14 +44,13 @@ app.use((req, res, next) => {
    ─────────────────────────────────────── */
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res) {
-    // keep static assets from being cached
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
   }
 }));
 
-// Allow client‑side ES‑module imports from /game
+// Allow ES-module access to game logic
 app.use('/game', express.static(path.join(__dirname, 'game')));
 
 /* ───────────────────────────────────────
