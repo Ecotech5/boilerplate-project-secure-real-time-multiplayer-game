@@ -1,113 +1,76 @@
+// server.js  ── ES‑module version
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import nocache from 'nocache';
 import helmet from 'helmet';
-import bodyParser from 'body-parser';
+import cors from 'cors';
+import nocache from 'nocache';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import cors from 'cors'; // ✅ Added CORS
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { handleSocket } from './game/sockets.mjs';
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-// ✅ Enable CORS for testing
+// __dirname helper for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
+/* ───────────────────────────────────────
+   1)  Core security + testing middleware
+   ─────────────────────────────────────── */
+// CORS ‑‑ lets FCC’s test runner access the site
 app.use(cors({ origin: '*' }));
 
-// Security and parsing middleware
+// Disable client‑side caching
 app.use(nocache());
+
+// Helmet (single call, default protections)
 app.use(helmet({
-  contentSecurityPolicy: false
+  contentSecurityPolicy: false   // keep CSP off for this small app
 }));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
 
-// Static files
-app.use('/public', express.static(__dirname + '/public'));
+// Manually spoof X‑Powered‑By for FCC test #19
+app.use((req, res, next) => {
+  res.setHeader('X-Powered-By', 'PHP 7.4.3');
+  next();
+});
+
+/* ───────────────────────────────────────
+   2)  Static assets
+   ─────────────────────────────────────── */
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res) {
+    // keep static assets from being cached
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
+
+// Allow client‑side ES‑module imports from /game
+app.use('/game', express.static(path.join(__dirname, 'game')));
+
+/* ───────────────────────────────────────
+   3)  Root route
+   ─────────────────────────────────────── */
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Testing routes (for FCC)
-import fcctestingRoutes from './routes/fcctesting.js';
-fcctestingRoutes(app);
+/* ───────────────────────────────────────
+   4)  Socket.IO game logic
+   ─────────────────────────────────────── */
+handleSocket(io);
 
-// Game socket logic
-const httpServer = http.createServer(app);
-const io = new Server(httpServer);
-
-// Game state
-const players = {};
-const collectibles = [];
-
-// Utility
-function randomPosition() {
-  return {
-    x: Math.floor(Math.random() * 500),
-    y: Math.floor(Math.random() * 500)
-  };
-}
-
-// Collectible generation
-function generateCollectible() {
-  const position = randomPosition();
-  const collectible = {
-    id: Date.now(),
-    position
-  };
-  collectibles.push(collectible);
-  io.emit('newCollectible', collectible);
-}
-
-// Socket.IO logic
-io.on('connection', (socket) => {
-  const playerId = socket.id;
-  players[playerId] = {
-    id: playerId,
-    position: randomPosition(),
-    score: 0
-  };
-
-  socket.emit('init', {
-    player: players[playerId],
-    players,
-    collectibles
-  });
-
-  socket.broadcast.emit('newPlayer', players[playerId]);
-
-  socket.on('move', (data) => {
-    if (players[playerId]) {
-      players[playerId].position = data.position;
-      io.emit('playerMoved', players[playerId]);
-    }
-  });
-
-  socket.on('collect', (id) => {
-    const index = collectibles.findIndex(c => c.id === id);
-    if (index !== -1) {
-      collectibles.splice(index, 1);
-      players[playerId].score += 1;
-      io.emit('collected', { id, playerId });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    delete players[playerId];
-    io.emit('playerDisconnected', playerId);
-  });
+/* ───────────────────────────────────────
+   5)  Start server
+   ─────────────────────────────────────── */
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`✅ Server listening on port ${PORT}`);
 });
-
-// Generate collectibles every 10 seconds
-setInterval(generateCollectible, 10000);
-
-// Start server
-const port = process.env.PORT || 3000;
-httpServer.listen(port, () => {
-  console.log(`Listening on port ${port}`);
-});
-
-// Testing support
-import './tests/runner.js';
