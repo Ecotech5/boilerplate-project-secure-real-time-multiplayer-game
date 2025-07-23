@@ -91,7 +91,7 @@ export default function (app) {
       process.nextTick(() =>  res.json(testFilter(runner.report, req.query.type, req.query.n)));
     });
   });
-  app.get('/_api/app-info', function(req, res) {
+  app.get('/_api/app-info', cors(),function(req, res) {
     var hs = Object.keys(res._headers)
       .filter(h => !h.match(/^access-control-\w+/));
     var hObj = {};
