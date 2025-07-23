@@ -1,62 +1,113 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-import helmet from 'helmet';
-import cors from 'cors';
 import nocache from 'nocache';
+import helmet from 'helmet';
+import bodyParser from 'body-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { handleSocket } from './game/sockets.mjs';
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+import cors from 'cors'; // ✅ Added CORS
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ✅ CORS (FCC test requires it)
+const app = express();
+
+// ✅ Enable CORS for testing
 app.use(cors({ origin: '*' }));
 
-// ✅ Disable caching
+// Security and parsing middleware
 app.use(nocache());
-
-// ✅ Correct Helmet setup (DO NOT override defaults)
-app.use(helmet()); // includes default protections
-app.use(helmet.hidePoweredBy()); // FCC test requires it
-
-// ✅ Spoof "X-Powered-By" manually AFTER helmet removes it
-app.use((req, res, next) => {
-  res.setHeader('X-Powered-By', 'PHP 7.4.3');
-  next();
-});
-
-// ✅ Serve static files with no-cache headers
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-  }
+app.use(helmet({
+  contentSecurityPolicy: false
 }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
-// ✅ Serve game scripts
-app.use('/game', express.static(path.join(__dirname, 'game')));
-
-// ✅ Serve index.html manually with same headers
+// Static files
+app.use('/public', express.static(__dirname + '/public'));
 app.get('/', (req, res) => {
-  const filePath = path.join(__dirname, 'public/index.html');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.sendFile(filePath);
+  res.sendFile(__dirname + '/views/index.html');
 });
 
-// ✅ Attach Socket.io logic
-handleSocket(io);
+// Testing routes (for FCC)
+import fcctestingRoutes from './routes/fcctesting.js';
+fcctestingRoutes(app);
 
-// ✅ Start server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+// Game socket logic
+const httpServer = http.createServer(app);
+const io = new Server(httpServer);
+
+// Game state
+const players = {};
+const collectibles = [];
+
+// Utility
+function randomPosition() {
+  return {
+    x: Math.floor(Math.random() * 500),
+    y: Math.floor(Math.random() * 500)
+  };
+}
+
+// Collectible generation
+function generateCollectible() {
+  const position = randomPosition();
+  const collectible = {
+    id: Date.now(),
+    position
+  };
+  collectibles.push(collectible);
+  io.emit('newCollectible', collectible);
+}
+
+// Socket.IO logic
+io.on('connection', (socket) => {
+  const playerId = socket.id;
+  players[playerId] = {
+    id: playerId,
+    position: randomPosition(),
+    score: 0
+  };
+
+  socket.emit('init', {
+    player: players[playerId],
+    players,
+    collectibles
+  });
+
+  socket.broadcast.emit('newPlayer', players[playerId]);
+
+  socket.on('move', (data) => {
+    if (players[playerId]) {
+      players[playerId].position = data.position;
+      io.emit('playerMoved', players[playerId]);
+    }
+  });
+
+  socket.on('collect', (id) => {
+    const index = collectibles.findIndex(c => c.id === id);
+    if (index !== -1) {
+      collectibles.splice(index, 1);
+      players[playerId].score += 1;
+      io.emit('collected', { id, playerId });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    delete players[playerId];
+    io.emit('playerDisconnected', playerId);
+  });
 });
+
+// Generate collectibles every 10 seconds
+setInterval(generateCollectible, 10000);
+
+// Start server
+const port = process.env.PORT || 3000;
+httpServer.listen(port, () => {
+  console.log(`Listening on port ${port}`);
+});
+
+// Testing support
+import './tests/runner.js';
